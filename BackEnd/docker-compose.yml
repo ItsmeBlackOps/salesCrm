@@ -1,0 +1,12 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: prisma_app
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "3005:3005"
+    command: "node src/app.js"

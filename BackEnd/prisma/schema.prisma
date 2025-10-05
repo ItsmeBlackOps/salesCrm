@@ -1,0 +1,167 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model clients {
+  clientid  Int     @id
+  leadid    Int
+  firstname String
+  lastname  String
+  email     String
+  company   String
+  status    String
+  createdat DateTime? @db.Timestamptz
+  updatedat DateTime? @db.Timestamptz
+
+  @@index([leadid])
+}
+
+model crmleadactivity {
+  activityid Int     @id @default(autoincrement())
+  leadid     Int
+  action     String
+  changedby  Int?
+  changedat  DateTime? @db.Timestamptz
+  details    String?
+
+  @@index([leadid])
+  @@index([changedby])
+}
+
+model crmleadcolumns {
+  id    String @id
+  title String
+  color String
+}
+
+model crmleadhistory {
+  historyid Int     @id @default(autoincrement())
+  leadid    Int
+  state     String
+  changedby Int?
+  changedat DateTime? @db.Timestamptz
+
+  @@index([leadid])
+  @@index([changedby])
+}
+
+
+model crmleads {
+  id              Int      @id @default(autoincrement())
+  firstname       String
+  lastname        String
+  email           String   @unique
+  phone           String?  @unique
+  company         String
+  status          String
+  source          String?
+  notes           String?
+  assignedto      String?
+  createdat       DateTime? @db.Timestamptz
+  updatedat       DateTime? @db.Timestamptz
+  lastcontactedat DateTime? @db.Timestamptz
+  expectedrevenue Float?    @db.Real
+  createdby       Int?
+  visastatusid    Int?
+  otherSource     String?
+  othersource     String?
+  checklist       Json?
+  legalnamessn    String?  @unique
+  last4ssn        String?  @unique
+
+  @@index([createdby])
+  @@index([assignedto])
+  @@index([status])
+  @@unique([firstname, lastname])
+}
+
+model departments {
+  departmentid Int    @id
+  name         String
+}
+
+
+
+model permissionhistory {
+  historyid    Int     @id @default(autoincrement())
+  roleid       Int
+  permissionid Int
+  action       String
+  changedby    Int?
+  changedat    String?
+}
+
+model permissions {
+  permissionid Int    @id
+  action       String @unique
+}
+
+model role_permissions {
+  roleid       Int
+  permissionid Int
+
+  @@id([roleid, permissionid])
+}
+
+model roles {
+  roleid            Int                     @id
+  name              String
+  parentroleid      Int?
+  componentAccesses role_component_access[]
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model sqlite_sequence {
+  name String?
+  seq  String?
+
+  @@ignore
+}
+
+model users {
+  userid       Int      @id @default(autoincrement())
+  name         String
+  email        String   @unique
+  passwordhash String
+  roleid       Int?
+  managerid    Int?
+  departmentid Int?
+  createdat    DateTime? @db.Timestamptz
+  updatedat    DateTime? @db.Timestamptz
+  status       String?
+  lastlogin    DateTime? @db.Timestamptz
+
+  @@index([managerid])
+  @@index([departmentid])
+  @@index([roleid])
+}
+
+model role_component_access {
+  id        Int     @id @default(autoincrement())
+  roleid    Int
+  component String
+  allowed   Boolean
+
+  role roles @relation(fields: [roleid], references: [roleid])
+
+//  @@unique([roleid, component])
+//  @@index([roleid])
+}
+
+/// Refresh tokens for session management (DB-backed)
+model refresh_tokens {
+  id        Int      @id @default(autoincrement())
+  jti       String   @unique
+  userid    Int
+  expiresat DateTime @db.Timestamptz
+  revoked   Boolean  @default(false)
+  createdat DateTime @default(now()) @db.Timestamptz
+
+  @@index([userid])
+  @@index([expiresat])
+}

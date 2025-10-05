@@ -1,0 +1,1656 @@
+openapi: 3.0.3
+info:
+  title: CRM Service API
+  version: 1.0.0
+  description: |
+    OpenAPI description derived from the Express application in `src/app.js`.
+    Most routes require a bearer JWT issued by `/login`; a handful of endpoints
+    additionally enforce administrative authorisation (role IDs 1 or 2).
+servers:
+  - url: https://saleshub.silverspace.tech
+    description: Default local development server
+security:
+  - bearerAuth: []
+tags:
+  - name: Auth
+  - name: Users
+  - name: Roles
+  - name: Permissions
+  - name: Leads
+  - name: Clients
+  - name: Configuration
+  - name: Diagnostics
+paths:
+  /login:
+    post:
+      tags: [Auth]
+      summary: Authenticate a user and issue access and refresh tokens
+      description: Returns both an access token (JWT) and a refresh token for the supplied credentials.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authentication succeeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /logout:
+    post:
+      tags: [Auth]
+      summary: Revoke the current refresh token
+      description: Requires a valid bearer token in the `Authorization` header. When present the refresh token is revoked and the session is terminated.
+      responses:
+        '200':
+          description: Logout acknowledgement
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /refresh:
+    post:
+      tags: [Auth]
+      summary: Exchange a refresh token for new tokens
+      description: Issues a fresh access token and rotates the refresh token.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Token refresh succeeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /me:
+    get:
+      tags: [Users]
+      summary: Retrieve the authenticated user's profile
+      responses:
+        '200':
+          description: Authenticated user details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFoundJSON'
+    put:
+      tags: [Users]
+      summary: Update the authenticated user's profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserSelfUpdateRequest'
+      responses:
+        '200':
+          description: Updated user profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /change-password:
+    post:
+      tags: [Users]
+      summary: Update the authenticated user's password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordChangeRequest'
+      responses:
+        '200':
+          description: Password was updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /users/{id}/change-password:
+    post:
+      tags: [Users]
+      summary: Reset a user's password
+      description: Requires that the requester has access to the target user via administrative privileges or hierarchy.
+      parameters:
+        - $ref: '#/components/parameters/UserIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+      responses:
+        '200':
+          description: Target user's password updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFoundEmpty'
+  /assignable-users:
+    get:
+      tags: [Users]
+      summary: List users assignable by the requester
+      description: Admins and super admins receive every user; others are limited to their reporting hierarchy.
+      responses:
+        '200':
+          description: Assignable users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AssignableUser'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /roles:
+    get:
+      tags: [Roles]
+      summary: List roles
+      responses:
+        '200':
+          description: Roles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Role'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /roles/{id}/permissions:
+    get:
+      tags: [Permissions]
+      summary: List permission IDs attached to a role
+      parameters:
+        - $ref: '#/components/parameters/RoleIdPath'
+      responses:
+        '200':
+          description: Permission IDs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: [Permissions]
+      summary: Replace the permissions for a role
+      description: Requires administrative privileges (role ID ≤ 2).
+      parameters:
+        - $ref: '#/components/parameters/RoleIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RolePermissionUpdateRequest'
+      responses:
+        '200':
+          description: Updated permission IDs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RolePermissionUpdateResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /permissions:
+    get:
+      tags: [Permissions]
+      summary: List all permissions
+      responses:
+        '200':
+          description: Permissions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Permission'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /permission-history:
+    get:
+      tags: [Permissions]
+      summary: List permission change history
+      description: Restricted to administrators.
+      responses:
+        '200':
+          description: Permission history entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PermissionHistory'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /logs:
+    get:
+      tags: [Configuration]
+      summary: Query audit logs
+      description: Administrative only. Filters for `userId` and/or `action` can be applied.
+      parameters:
+        - name: userId
+          in: query
+          schema:
+            type: integer
+          description: Filter by user ID
+          example: 17
+        - name: action
+          in: query
+          schema:
+            type: string
+          description: Filter by action name
+          example: LOGIN
+      responses:
+        '200':
+          description: Log entries ordered by descending timestamp
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LogEntry'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /departments:
+    get:
+      tags: [Configuration]
+      summary: List departments
+      responses:
+        '200':
+          description: Departments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Department'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /lead-suggestions:
+    get:
+      tags: [Leads]
+      summary: Suggest existing leads by name or phone
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+          description: Partial name to search (first or last name)
+          example: John
+        - name: phone
+          in: query
+          schema:
+            type: string
+          description: Digits to match against phone numbers
+          example: '5551234'
+      responses:
+        '200':
+          description: Matching lead suggestions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LeadSuggestion'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /role-access:
+    get:
+      tags: [Permissions]
+      summary: Retrieve UI component access matrix
+      responses:
+        '200':
+          description: Component access flags keyed by component then role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleAccessMatrix'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Permissions]
+      summary: Replace the UI component access matrix
+      description: Administrative only. The request body must include the full replacement matrix.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleAccessMatrix'
+      responses:
+        '200':
+          description: Update acknowledgement
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /users:
+    get:
+      tags: [Users]
+      summary: List users with pagination
+      parameters:
+        - $ref: '#/components/parameters/TakeQuery'
+        - $ref: '#/components/parameters/CursorQuery'
+        - $ref: '#/components/parameters/SearchQuery'
+      responses:
+        '200':
+          description: User page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Users]
+      summary: Create a user
+      description: Non-administrators may only create users within their management hierarchy with lower roles.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+      responses:
+        '201':
+          description: Created user (without password hash)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /users/{id}:
+    get:
+      tags: [Users]
+      summary: Retrieve a user by ID
+      parameters:
+        - $ref: '#/components/parameters/UserIdPath'
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFoundEmpty'
+    put:
+      tags: [Users]
+      summary: Replace a user's profile
+      description: Requires access to the user; non-admins cannot promote to equal-or-higher roles or assign managers outside their hierarchy.
+      parameters:
+        - $ref: '#/components/parameters/UserIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+      responses:
+        '200':
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFoundEmpty'
+    delete:
+      tags: [Users]
+      summary: Delete a user
+      parameters:
+        - $ref: '#/components/parameters/UserIdPath'
+      responses:
+        '204':
+          description: User deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFoundEmpty'
+  /crm-leads:
+    get:
+      tags: [Leads]
+      summary: List CRM leads with pagination
+      parameters:
+        - $ref: '#/components/parameters/TakeQuery'
+        - $ref: '#/components/parameters/LeadCursorQuery'
+        - $ref: '#/components/parameters/SearchQuery'
+      responses:
+        '200':
+          description: Lead page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeadListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Leads]
+      summary: Create a CRM lead
+      description: Creator is recorded automatically; duplicate detection is enforced on email, phone, name, legal name, and last 4 SSN.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeadCreateRequest'
+      responses:
+        '201':
+          description: Created lead
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lead'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /crm-leads/{id}:
+    get:
+      tags: [Leads]
+      summary: Retrieve a CRM lead by ID
+      parameters:
+        - $ref: '#/components/parameters/LeadIdPath'
+      responses:
+        '200':
+          description: Lead details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lead'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFoundEmpty'
+    put:
+      tags: [Leads]
+      summary: Replace a CRM lead
+      description: The request body must include the lead `id` matching the path. Duplicate checks mirror creation logic.
+      parameters:
+        - $ref: '#/components/parameters/LeadIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeadReplaceRequest'
+      responses:
+        '200':
+          description: Updated lead
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lead'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFoundEmpty'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    patch:
+      tags: [Leads]
+      summary: Partially update a CRM lead
+      parameters:
+        - $ref: '#/components/parameters/LeadIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeadPatchRequest'
+      responses:
+        '200':
+          description: Updated lead
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lead'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFoundEmpty'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Leads]
+      summary: Delete a CRM lead
+      parameters:
+        - $ref: '#/components/parameters/LeadIdPath'
+      responses:
+        '204':
+          description: Lead deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFoundEmpty'
+  /crm-leads/{id}/activity:
+    get:
+      tags: [Leads]
+      summary: List activity for a lead
+      parameters:
+        - $ref: '#/components/parameters/LeadIdPath'
+      responses:
+        '200':
+          description: Lead activity entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LeadActivity'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFoundEmpty'
+  /crm-leads/{id}/history:
+    get:
+      tags: [Leads]
+      summary: List history records for a lead
+      parameters:
+        - $ref: '#/components/parameters/LeadIdPath'
+      responses:
+        '200':
+          description: Lead history records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LeadHistory'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFoundEmpty'
+  /crmLeadHistory:
+    post:
+      tags: [Leads]
+      summary: Append a lead history entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeadHistoryCreateRequest'
+      responses:
+        '201':
+          description: Created lead history entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeadHistory'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFoundJSON'
+  /columns:
+    get:
+      tags: [Configuration]
+      summary: List CRM lead columns
+      responses:
+        '200':
+          description: Columns
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Column'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Configuration]
+      summary: Create a CRM lead column
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ColumnCreateRequest'
+      responses:
+        '201':
+          description: Created column
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Column'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /columns/{id}:
+    delete:
+      tags: [Configuration]
+      summary: Delete a CRM lead column
+      parameters:
+        - $ref: '#/components/parameters/ColumnIdPath'
+      responses:
+        '204':
+          description: Column deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /clients:
+    post:
+      tags: [Clients]
+      summary: Create a client record
+      description: Non-admins must own or be assigned the referenced lead.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientCreateRequest'
+      responses:
+        '201':
+          description: Created client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFoundJSON'
+    get:
+      tags: [Clients]
+      summary: List clients accessible to the requester
+      responses:
+        '200':
+          description: Clients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Client'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /clients/by-lead/{leadId}:
+    get:
+      tags: [Clients]
+      summary: Retrieve a client by lead ID
+      parameters:
+        - $ref: '#/components/parameters/LeadIdPathNamed'
+      responses:
+        '200':
+          description: Client associated with the lead
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFoundJSON'
+  /clients/{id}:
+    get:
+      tags: [Clients]
+      summary: Retrieve a client by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1001
+      responses:
+        '200':
+          description: Client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFoundJSON'
+  /_diag/db-latency:
+    get:
+      tags: [Diagnostics]
+      summary: Sample database latency
+      description: Performs three `SELECT 1` statements and reports the durations in milliseconds.
+      security: []
+      responses:
+        '200':
+          description: Latency metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DbLatencySample'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    UserIdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      example: 42
+    RoleIdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      example: 2
+    LeadIdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      example: 123
+    LeadIdPathNamed:
+      name: leadId
+      in: path
+      required: true
+      schema:
+        type: integer
+      example: 123
+    ColumnIdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      example: status
+    TakeQuery:
+      name: take
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+      description: Maximum number of records to return (default 50)
+      example: 25
+    CursorQuery:
+      name: cursor
+      in: query
+      schema:
+        type: integer
+      description: Pagination cursor (user ID)
+      example: 150
+    LeadCursorQuery:
+      name: cursor
+      in: query
+      schema:
+        type: integer
+      description: Pagination cursor (lead ID)
+      example: 875
+    SearchQuery:
+      name: q
+      in: query
+      schema:
+        type: string
+      description: Case-insensitive search string
+      example: smith
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Access token missing or invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: The caller is not authorised for this action
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFoundJSON:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFoundEmpty:
+      description: Resource not found
+    Conflict:
+      description: Conflict with existing resource state
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+      required: [message]
+      example:
+        message: Invalid or expired token
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required: [message]
+      example:
+        message: Password updated
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+      required: [email, password]
+      example:
+        email: admin@example.com
+        password: Passw0rd!
+    LoginResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        token:
+          type: string
+          description: Alias of `accessToken` maintained for backward compatibility
+        refreshToken:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+      required: [accessToken, token, refreshToken, user]
+      example:
+        accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        refreshToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        user:
+          userid: 1
+          name: Ada Lovelace
+          email: admin@example.com
+    RefreshRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+      required: [refreshToken]
+      example:
+        refreshToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+    RefreshResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+      required: [accessToken, refreshToken]
+      example:
+        accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        refreshToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+    PasswordChangeRequest:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+          format: password
+        newPassword:
+          type: string
+          format: password
+          description: Must be at least 8 characters with letters and digits
+      required: [currentPassword, newPassword]
+      example:
+        currentPassword: StrongPa55
+        newPassword: StrongerPa55
+    PasswordResetRequest:
+      type: object
+      properties:
+        newPassword:
+          type: string
+          format: password
+          description: Must be at least 8 characters with letters and digits
+      required: [newPassword]
+      example:
+        newPassword: Temporary123
+    User:
+      type: object
+      properties:
+        userid:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        roleid:
+          type: integer
+          nullable: true
+        managerid:
+          type: integer
+          nullable: true
+        departmentid:
+          type: integer
+          nullable: true
+        createdat:
+          type: string
+          format: date-time
+          nullable: true
+        updatedat:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          nullable: true
+        lastlogin:
+          type: string
+          format: date-time
+          nullable: true
+      required: [userid, name, email]
+      example:
+        userid: 7
+        name: Grace Hopper
+        email: grace.hopper@example.com
+        roleid: 2
+        managerid: 1
+        departmentid: 3
+        status: active
+        lastlogin: 2024-09-25T14:32:11.000Z
+    UserSelfUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        managerid:
+          type: integer
+          nullable: true
+        departmentid:
+          type: integer
+          nullable: true
+      additionalProperties: false
+      example:
+        name: Grace Hopper
+        email: grace.hopper@example.com
+        managerid: 1
+        departmentid: 3
+    UserCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        roleid:
+          type: integer
+          nullable: true
+        managerid:
+          type: integer
+          nullable: true
+        departmentid:
+          type: integer
+          nullable: true
+      required: [name, email, password]
+      additionalProperties: false
+      example:
+        name: Katherine Johnson
+        email: katherine.johnson@example.com
+        password: TempPass123
+        roleid: 3
+        managerid: 7
+        departmentid: 2
+    UserUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        roleid:
+          type: integer
+          nullable: true
+        managerid:
+          type: integer
+          nullable: true
+        departmentid:
+          type: integer
+          nullable: true
+        status:
+          type: string
+          nullable: true
+      additionalProperties: false
+      example:
+        name: Katherine Johnson
+        email: katherine.johnson@example.com
+        roleid: 3
+        managerid: 7
+        status: active
+    UserListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        nextCursor:
+          type: integer
+          nullable: true
+      required: [items]
+      example:
+        items:
+          - userid: 7
+            name: Grace Hopper
+            email: grace.hopper@example.com
+            roleid: 2
+          - userid: 8
+            name: Alan Turing
+            email: alan.turing@example.com
+            roleid: 3
+        nextCursor: 8
+    AssignableUser:
+      type: object
+      properties:
+        userid:
+          type: integer
+        name:
+          type: string
+        managerid:
+          type: integer
+          nullable: true
+      required: [userid, name]
+      example:
+        userid: 8
+        name: Alan Turing
+        managerid: 7
+    Role:
+      type: object
+      properties:
+        roleid:
+          type: integer
+        name:
+          type: string
+        parentroleid:
+          type: integer
+          nullable: true
+      required: [roleid, name]
+      example:
+        roleid: 3
+        name: Sales Manager
+        parentroleid: 2
+    Permission:
+      type: object
+      properties:
+        permissionid:
+          type: integer
+        action:
+          type: string
+      required: [permissionid, action]
+      example:
+        permissionid: 101
+        action: leads.view
+    PermissionHistory:
+      type: object
+      properties:
+        historyid:
+          type: integer
+        roleid:
+          type: integer
+        permissionid:
+          type: integer
+        action:
+          type: string
+        changedby:
+          type: integer
+          nullable: true
+        changedat:
+          type: string
+          nullable: true
+      required: [historyid, roleid, permissionid, action]
+      example:
+        historyid: 1
+        roleid: 3
+        permissionid: 101
+        action: GRANT
+        changedby: 1
+        changedat: 2024-09-25T14:12:00Z
+    RolePermissionUpdateRequest:
+      type: object
+      properties:
+        permissionIds:
+          type: array
+          items:
+            type: integer
+      required: [permissionIds]
+      additionalProperties: false
+      example:
+        permissionIds: [101, 102, 103]
+    RolePermissionUpdateResponse:
+      type: object
+      properties:
+        permissionIds:
+          type: array
+          items:
+            type: integer
+      required: [permissionIds]
+      example:
+        permissionIds: [101, 102, 103]
+    RoleAccessMatrix:
+      type: object
+      additionalProperties:
+        type: object
+        additionalProperties:
+          type: boolean
+      example:
+        dashboard:
+          '1': true
+          '2': true
+          '3': false
+        admin.panel:
+          '1': true
+          '2': false
+    LogEntry:
+      type: object
+      description: Raw log record as stored in the `logs` table. Columns may vary by deployment.
+      additionalProperties: true
+      example:
+        id: 5001
+        userid: 7
+        action: LOGIN
+        timestamp: 2024-09-25T14:32:11.000Z
+        details: Successful login from 192.0.2.15
+    Department:
+      type: object
+      properties:
+        departmentid:
+          type: integer
+        name:
+          type: string
+      required: [departmentid, name]
+      example:
+        departmentid: 3
+        name: Sales
+    LeadSuggestion:
+      type: object
+      properties:
+        leadid:
+          type: integer
+        fullname:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          format: email
+          nullable: true
+      required: [leadid, fullname]
+      example:
+        leadid: 875
+        fullname: Jane Doe
+        phone: '5559876543'
+        email: jane.doe@example.com
+    Lead:
+      type: object
+      properties:
+        id:
+          type: integer
+        firstname:
+          type: string
+        lastname:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          nullable: true
+        company:
+          type: string
+        status:
+          type: string
+        source:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        assignedto:
+          type: string
+          nullable: true
+        createdat:
+          type: string
+          format: date-time
+          nullable: true
+        updatedat:
+          type: string
+          format: date-time
+          nullable: true
+        lastcontactedat:
+          type: string
+          format: date-time
+          nullable: true
+        expectedrevenue:
+          type: number
+          format: float
+          nullable: true
+        createdby:
+          type: integer
+          nullable: true
+        visastatusid:
+          type: integer
+          nullable: true
+        otherSource:
+          type: string
+          nullable: true
+        othersource:
+          type: string
+          nullable: true
+        checklist:
+          type: object
+          additionalProperties: true
+          nullable: true
+          description: Arbitrary JSON payload tracking checklist state
+        legalnamessn:
+          type: string
+          nullable: true
+        last4ssn:
+          type: string
+          nullable: true
+      required: [id, firstname, lastname, email, company, status]
+      example:
+        id: 875
+        firstname: Jane
+        lastname: Doe
+        email: jane.doe@example.com
+        phone: '5559876543'
+        company: Example Corp
+        status: qualified
+        source: web-form
+        assignedto: '7'
+        createdat: 2024-09-15T10:30:00Z
+        updatedat: 2024-09-20T08:00:00Z
+        checklist:
+          identityVerified: true
+          documentsCollected: false
+    LeadCreateRequest:
+      allOf:
+        - $ref: '#/components/schemas/LeadOptionalId'
+        - type: object
+          required: [firstname, lastname, email, company, status]
+      example:
+        firstname: Jane
+        lastname: Doe
+        email: jane.doe@example.com
+        phone: '5559876543'
+        company: Example Corp
+        status: new
+        source: referral
+        notes: Warm lead from partner
+    LeadOptionalId:
+      type: object
+      properties:
+        firstname:
+          type: string
+        lastname:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          nullable: true
+        company:
+          type: string
+        status:
+          type: string
+        source:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        assignedto:
+          type: string
+          nullable: true
+        createdat:
+          type: string
+          format: date-time
+          nullable: true
+        updatedat:
+          type: string
+          format: date-time
+          nullable: true
+        lastcontactedat:
+          type: string
+          format: date-time
+          nullable: true
+        expectedrevenue:
+          type: number
+          format: float
+          nullable: true
+        visastatusid:
+          type: integer
+          nullable: true
+        otherSource:
+          type: string
+          nullable: true
+        othersource:
+          type: string
+          nullable: true
+        checklist:
+          type: object
+          additionalProperties: true
+          nullable: true
+        legalnamessn:
+          type: string
+          nullable: true
+        last4ssn:
+          type: string
+          nullable: true
+      additionalProperties: false
+      example:
+        firstname: Jane
+        lastname: Doe
+        email: jane.doe@example.com
+        phone: '5559876543'
+        company: Example Corp
+        status: new
+        checklist:
+          identityVerified: false
+    LeadReplaceRequest:
+      allOf:
+        - $ref: '#/components/schemas/LeadOptionalId'
+        - type: object
+          properties:
+            id:
+              type: integer
+          required: [id]
+      example:
+        id: 875
+        firstname: Jane
+        lastname: Doe
+        email: jane.doe@example.com
+        company: Example Corp
+        status: contacted
+    LeadPatchRequest:
+      type: object
+      description: Partial lead update. Absent properties remain unchanged.
+      additionalProperties: true
+      example:
+        status: qualified
+        notes: Requested follow-up call next week
+    LeadListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Lead'
+        nextCursor:
+          type: integer
+          nullable: true
+      required: [items]
+      example:
+        items:
+          - id: 875
+            firstname: Jane
+            lastname: Doe
+            email: jane.doe@example.com
+            company: Example Corp
+            status: qualified
+          - id: 876
+            firstname: John
+            lastname: Smith
+            email: john.smith@example.com
+            company: Contoso LLC
+            status: new
+        nextCursor: 876
+    LeadActivity:
+      type: object
+      properties:
+        activityid:
+          type: integer
+        leadid:
+          type: integer
+        action:
+          type: string
+        changedby:
+          type: integer
+          nullable: true
+        changedat:
+          type: string
+          format: date-time
+          nullable: true
+        details:
+          type: string
+          nullable: true
+      required: [activityid, leadid, action]
+      example:
+        activityid: 3201
+        leadid: 875
+        action: UPDATE
+        changedby: 7
+        changedat: 2024-09-20T08:00:00Z
+        details: '{"status":"qualified"}'
+    LeadHistory:
+      type: object
+      properties:
+        historyid:
+          type: integer
+        leadid:
+          type: integer
+        state:
+          type: string
+        changedby:
+          type: integer
+          nullable: true
+        changedat:
+          type: string
+          format: date-time
+          nullable: true
+      required: [historyid, leadid, state]
+      example:
+        historyid: 210
+        leadid: 875
+        state: contacted
+        changedby: 7
+        changedat: 2024-09-18T09:00:00Z
+    LeadHistoryCreateRequest:
+      type: object
+      properties:
+        leadId:
+          type: integer
+        state:
+          type: string
+        changedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required: [leadId, state]
+      example:
+        leadId: 875
+        state: qualified
+        changedAt: 2024-09-20T08:00:00Z
+    Column:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        color:
+          type: string
+      required: [id, title, color]
+      example:
+        id: status
+        title: Status
+        color: '#4F46E5'
+    ColumnCreateRequest:
+      $ref: '#/components/schemas/Column'
+    Client:
+      type: object
+      properties:
+        clientid:
+          type: integer
+        leadid:
+          type: integer
+        firstname:
+          type: string
+        lastname:
+          type: string
+        email:
+          type: string
+          format: email
+        company:
+          type: string
+        status:
+          type: string
+        createdat:
+          type: string
+          format: date-time
+          nullable: true
+        updatedat:
+          type: string
+          format: date-time
+          nullable: true
+      required: [clientid, leadid, firstname, lastname, email, company, status]
+      example:
+        clientid: 501
+        leadid: 875
+        firstname: Jane
+        lastname: Doe
+        email: jane.doe@example.com
+        company: Example Corp
+        status: onboarded
+        createdat: 2024-09-22T12:00:00Z
+    ClientCreateRequest:
+      allOf:
+        - $ref: '#/components/schemas/Client'
+      example:
+        clientid: 501
+        leadid: 875
+        firstname: Jane
+        lastname: Doe
+        email: jane.doe@example.com
+        company: Example Corp
+        status: onboarded
+    DbLatencySample:
+      type: object
+      properties:
+        first_ms:
+          type: number
+          format: float
+        second_ms:
+          type: number
+          format: float
+        third_ms:
+          type: number
+          format: float
+      required: [first_ms, second_ms, third_ms]
+      example:
+        first_ms: 12.4
+        second_ms: 10.9
+        third_ms: 11.2
