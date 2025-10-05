@@ -1,0 +1,15 @@
+#version: "3.9"
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Vite dev server port (matches vite.config.ts)
+    ports:
+      - "9911:9911"
+    env_file:
+      - .env
+    # Uses CMD from Dockerfile: `npm run dev`
+    # Restart policy for convenience during local dev
+    restart: unless-stopped
