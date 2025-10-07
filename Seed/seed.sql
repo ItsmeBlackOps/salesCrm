@@ -17,11 +17,11 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 INSERT INTO users (email, name, role, password_hash) VALUES
-('sa@example.test','SA User','Super Admin','$2a$10$hashhashhash'),
-('admin@example.test','Admin User','Admin','$2a$10$hashhashhash'),
-('mgr@example.test','Manager User','Manager','$2a$10$hashhashhash'),
-('agent@example.test','Agent User','Agent','$2a$10$hashhashhash'),
-('lead@example.test','Lead User','Lead','$2a$10$hashhashhash')
+('sa@example.test','SA User','Super Admin','cd55f733e210a64a64c8eee9865df777504d05a9c5d3877fdebe73cdfc71e05d'),
+('admin@example.test','Admin User','Admin','c1c224b03cd9bc7b6a86d77f5dace40191766c485cd55dc48caf9ac873335d6f'),
+('mgr@example.test','Manager User','Manager','8b2085f74dfa9c78a23b7d573c23d27d6d0b0e50c82a9b13138b193325be3814'),
+('agent@example.test','Agent User','Agent','11b39c93777e8f1f3983bdba7c72b22fe68cfea20c677e9de53e17cb7dbfb19f'),
+('lead@example.test','Lead User','Lead','645978287991a6f40bcaf5840f5653b89b75b3bd1ea78cf9f39192e2400ac23e')
 ON CONFLICT (email) DO NOTHING;
 
 -- Departments
