@@ -8,25 +8,31 @@ UNION ALL SELECT 'departments', COUNT(*) FROM departments
 UNION ALL SELECT 'crmleads', COUNT(*) FROM crmleads
 UNION ALL SELECT 'clients', COUNT(*) FROM clients;
 
--- Sample rows from each table
-SELECT id, name FROM roles ORDER BY id;
-SELECT id, email, role FROM users ORDER BY id;
-SELECT id, name FROM departments ORDER BY id;
-SELECT id, title, owner_email, status, region FROM crmleads ORDER BY id;
+-- Sample rows from each table (match actual columns)
+SELECT roleid, name FROM roles ORDER BY roleid;
+SELECT userid, email, roleid FROM users ORDER BY userid;
+SELECT departmentid, name FROM departments ORDER BY departmentid;
+SELECT id, firstname, lastname, email, status FROM crmleads ORDER BY id;
 SELECT id, name, origin_lead_id, owner_email FROM clients ORDER BY id;
 
 -- Foreign key sanity checks
--- Users' role must exist in roles
-SELECT u.email, u.role
+-- Users' roleid must exist in roles
+SELECT u.email, u.roleid
 FROM users u
-LEFT JOIN roles r ON r.name = u.role
-WHERE r.name IS NULL;
+LEFT JOIN roles r ON r.roleid = u.roleid
+WHERE u.roleid IS NOT NULL AND r.roleid IS NULL;
 
--- Leads' owner_email must exist in users
-SELECT l.id, l.owner_email
-FROM crmleads l
-LEFT JOIN users u ON u.email = l.owner_email
+-- Clients.owner_email must exist in users
+SELECT c.id, c.owner_email
+FROM clients c
+LEFT JOIN users u ON u.email = c.owner_email
 WHERE u.email IS NULL;
+
+-- Clients.origin_lead_id must exist in crmleads
+SELECT c.id, c.origin_lead_id
+FROM clients c
+LEFT JOIN crmleads l ON l.id = c.origin_lead_id
+WHERE c.origin_lead_id IS NOT NULL AND l.id IS NULL;
 
 -- Potential duplicates that should not exist
 SELECT email, COUNT(*) AS dup_count
@@ -39,4 +45,3 @@ SELECT table_name
 FROM information_schema.tables
 WHERE table_schema = 'public'
 ORDER BY table_name;
-

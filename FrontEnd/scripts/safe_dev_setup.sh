@@ -60,7 +60,11 @@ else
 fi
 
 # Ensure auxiliary dev/test databases for Backend exist (api_dev/api_test)
-echo "[safe-setup] Ensuring aux databases exist (api_dev, api_test)"
+echo "[safe-setup] Ensuring databases exist (app_dev, app_test, api_dev, api_test)"
+# Ensure primary app databases (used by seeding)
+docker exec -i app_db_dev psql -U dev -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE app_dev WITH OWNER dev TEMPLATE template1;" 2>/dev/null || echo "[safe-setup] app_dev already present"
+docker exec -i app_db_test psql -U test -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE app_test WITH OWNER test TEMPLATE template1;" 2>/dev/null || echo "[safe-setup] app_test already present"
+# Ensure auxiliary backend databases
 docker exec -i app_db_dev psql -U dev -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE api_dev WITH OWNER dev TEMPLATE template1;" 2>/dev/null || echo "[safe-setup] api_dev already present"
 docker exec -i app_db_test psql -U test -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE api_test WITH OWNER test TEMPLATE template1;" 2>/dev/null || echo "[safe-setup] api_test already present"
 

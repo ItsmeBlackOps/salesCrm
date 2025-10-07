@@ -40,8 +40,7 @@ fi
 
 echo "[db:seed] Applying $SEED_SQL to $CONTAINER ($DB_NAME as $DB_USER)"
 
-# Pipe the SQL into psql within the Postgres container
-cat "$SEED_SQL" | docker exec -i "$CONTAINER" psql -U "$DB_USER" -d "$DB_NAME"
+# Pipe the SQL into psql within the Postgres container (stop on first error)
+cat "$SEED_SQL" | docker exec -i "$CONTAINER" psql -v ON_ERROR_STOP=1 -U "$DB_USER" -d "$DB_NAME"
 
 echo "[db:seed] Done."
-

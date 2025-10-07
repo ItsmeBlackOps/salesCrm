@@ -20,6 +20,7 @@
     "db:migrate": "node scripts/migrate.js",
     "db:seed": "bash scripts/seed.sh",
     "db:check": "bash scripts/check.sh",
+    "db:reset": "bash scripts/reset_db.sh",
     "setup:safe": "bash scripts/safe_dev_setup.sh",
     "test:task01": "npm run jest -- src/__tests__/SignInSafeguards.test.tsx",
     "test:task02": "npm run jest -- src/__tests__/LogoutFlow.test.tsx",
