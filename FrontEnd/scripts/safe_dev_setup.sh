@@ -59,6 +59,11 @@ else
   echo "[safe-setup] Found existing .env.local"
 fi
 
+# Ensure auxiliary dev/test databases for Backend exist (api_dev/api_test)
+echo "[safe-setup] Ensuring aux databases exist (api_dev, api_test)"
+docker exec -i app_db_dev psql -U dev -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE api_dev WITH OWNER dev TEMPLATE template1;" 2>/dev/null || echo "[safe-setup] api_dev already present"
+docker exec -i app_db_test psql -U test -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE api_test WITH OWNER test TEMPLATE template1;" 2>/dev/null || echo "[safe-setup] api_test already present"
+
 if [[ "$ENV_NAME" == "dev" ]]; then
   export DATABASE_URL="postgres://dev:dev@localhost:5438/app_dev"
 else
