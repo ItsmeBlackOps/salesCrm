@@ -152,7 +152,8 @@ CREATE TABLE IF NOT EXISTS crmleads (
     expectedrevenue REAL,
     createdby INT,
     visastatusid INT,
-    otherSource VARCHAR,
+    "otherSource" VARCHAR,
+    othersource VARCHAR,
     checklist TEXT,
     legalnamessn VARCHAR UNIQUE,
     last4ssn VARCHAR UNIQUE,
@@ -164,7 +165,7 @@ CREATE INDEX IF NOT EXISTS idx_crmleads_assignedto ON crmleads (assignedto);
 CREATE INDEX IF NOT EXISTS idx_crmleads_status ON crmleads (status);
 
 
-INSERT INTO crmleads (id, firstname, lastname, email, phone, company, status, source, notes, assignedto, createdat, updatedat, lastcontactedat, expectedrevenue, createdby, visastatusid, otherSource, checklist, legalnamessn, last4ssn) VALUES
+INSERT INTO crmleads (id, firstname, lastname, email, phone, company, status, source, notes, assignedto, createdat, updatedat, lastcontactedat, expectedrevenue, createdby, visastatusid, "otherSource", checklist, legalnamessn, last4ssn) VALUES
   (2, 'Richard', 'Lewis', 'anon_2_f4d317d7@example.test', '+17161961566', 'Silverspace Inc.', 'Info Pending', 'linkedin', '', '30', '2025-07-23T20:46:38.274000+00:00', '2025-09-02T22:03:45.724000+00:00', NULL, NULL, 30, 3, NULL, '[]', NULL, NULL),
   (4, 'Nancy', 'Ford', 'anon_4_aea36d57@example.test', '+17984518097', 'Silverspace Inc.', 'Pipeline', 'linkedin', 'Email sent - will CB', '32', '2025-07-24T21:27:21.975000+00:00', '2025-08-29T16:51:13.122000+00:00', NULL, NULL, 32, 7, NULL, '[]', NULL, NULL),
   (47, 'Michael', 'Martin', 'anon_47_1e673218@example.test', '+14633731546', 'Vizva Inc.', 'pipeline', 'linkedin', '', '31', '2025-06-12T18:22:59.656000+00:00', '2025-06-12T18:47:20.196000+00:00', NULL, NULL, 31, 3, NULL, '[{''label'': ''resume'', ''checked'': False}, {''label'': ''screen'', ''checked'': False}, {''label'': ''background'', ''checked'': False}]', NULL, NULL),
