@@ -101,6 +101,38 @@ INSERT INTO users (userid, name, email, passwordhash, roleid, managerid, departm
 ON CONFLICT (email) DO NOTHING;
 
 -- Departments
+CREATE TABLE role_component_access (
+    id INT PRIMARY KEY,
+    allowed BOOLEAN,
+    component TEXT,
+    roleid INT
+);
+
+INSERT INTO role_component_access (id, allowed, component, roleid) VALUES
+(63, true, 'dashboard', 1),
+(64, true, 'dashboard', 2),
+(65, true, 'dashboard', 3),
+(66, true, 'dashboard', 4),
+(67, true, 'dashboard', 5),
+(68, true, 'analytics', 1),
+(69, true, 'contacts', 1),
+(70, true, 'deals', 1),
+(71, true, 'leads', 1),
+(72, true, 'leads', 2),
+(73, true, 'leads', 3),
+(74, true, 'leads', 4),
+(75, true, 'leads', 5),
+(76, true, 'reports', 1),
+(77, true, 'reportdetails', 1),
+(78, true, 'settings', 1),
+(79, true, 'settings', 2),
+(80, true, 'settings', 3),
+(81, true, 'settings', 4),
+(82, true, 'roleaccess', 1),
+(83, true, 'roleaccess', 2),
+(84, false, 'roleaccess', 3),
+(85, true, 'usermanagement', 1),
+(86, true, 'usermanagement', 2);
 
 -- Leads
 CREATE TABLE IF NOT EXISTS crmleads (
